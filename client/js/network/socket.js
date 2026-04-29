@@ -6,7 +6,6 @@ export class NetworkManager {
     this.players = new Map();
     this.myPlayerId = null;
     this.playerPosition = playerPosition;
-
     this.initializeSocket();
     this.startPositionUpdates();
   }
@@ -27,23 +26,44 @@ export class NetworkManager {
         this.myPlayerId = message.id;
         this.playerPosition.x = message.position.x;
         this.playerPosition.y = message.position.y;
-        console.log("My player ID:", this.myPlayerId);
+        this.myPlayerNumber = message.playerNumber;
         break;
 
       case "update":
         if (message.id !== this.myPlayerId) {
           if (this.players.has(message.id)) {
             const playerData = this.players.get(message.id);
-            playerData.x = message.position.x;
-            playerData.y = message.position.y;
+            playerData.targetX = message.position.x;
+            playerData.targetY = message.position.y;
           } else {
-            console.log("New player joined:", message.id);
             this.players.set(message.id, {
               x: message.position.x,
               y: message.position.y,
-              sprite: this.createPlayerSprite(),
+              targetX: message.position.x,
+              targetY: message.position.y,
+              playerNumber: message.playerNumber,
+              sprite: this.createPlayerSprite(message.playerNumber),
             });
           }
+        }
+        break;
+
+      case "health":
+        if (!this.myPlayerId) break;
+        if (message.id === this.myPlayerId) {
+          window.dispatchEvent(
+            new CustomEvent("healthUpdate", {
+              detail: { health: message.health },
+            }),
+          );
+        }
+        break;
+
+      case "dead":
+        if (message.id === this.myPlayerId) {
+          console.log("You died!");
+        } else {
+          console.log("Enemy died!");
         }
         break;
 
@@ -56,9 +76,20 @@ export class NetworkManager {
     }
   }
 
-  createPlayerSprite() {
+  sendHit(targetId) {
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: "hit", targetId }));
+    }
+  }
+
+  getMyPlayerNumber() {
+    return this.myPlayerNumber ?? 0;
+  }
+
+  createPlayerSprite(playerNumber) {
     const idleImg = new Image();
-    idleImg.src = "./img/player1/idle.png";
+    idleImg.src = `img/player${playerNumber + 1}/idle.png`;
+    console.log(idleImg);
     return new Sprite(idleImg, 6);
   }
 

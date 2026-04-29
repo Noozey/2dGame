@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Multiplayer Game</title>
+    </head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f0f0f;
+        }
+
+        #canvas {
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <body>
+        <div id="root"></div>
+        <canvas id="canvas" class="absolute z-1"></canvas>
+        <script type="module" src="/src/main.tsx"></script>
+        <script type="module" src="./js/main.js"></script>
+    </body>
+</html>

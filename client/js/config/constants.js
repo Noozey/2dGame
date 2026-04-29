@@ -9,9 +9,9 @@ export const PLAYER_HEIGHT = 32;
 export const PLAYER_INITIAL_X = 300;
 export const PLAYER_INITIAL_Y = 250;
 
-export const MOVE_SPEED = 400;
+export const MOVE_SPEED = 300;
 
-export const FRAME_UPDATE_RATE = 15;
+export const FRAME_UPDATE_RATE = 30;
 
 export const GUN_OFFSET_X = 5;
 export const GUN_OFFSET_Y = 30;
