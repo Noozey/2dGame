@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Heart } from "lucide-react";
 
 export default function App() {
   const [health, setHealth] = useState(100);
@@ -7,23 +8,27 @@ export default function App() {
     const handleHealth = (e: CustomEvent) => {
       setHealth(e.detail.health);
     };
-
     window.addEventListener("healthUpdate", handleHealth as EventListener);
-
     return () => {
       window.removeEventListener("healthUpdate", handleHealth as EventListener);
     };
   }, []);
 
+  const totalHearts = 10;
+  const filledHearts = Math.ceil(health / 10);
+
   return (
-    <div id="root" className="z-10 text-white">
-      <div className="w-4xl h-auto">
-        <div
-          className="h-auto bg-red-600 font-extrabold text-center"
-          style={{ width: `${health}%` }}
-        >
-          Health
-        </div>
+    <div id="ui-root" className="">
+      {/* Hearts Display */}
+      <div className="flex justify-center gap-1 mb-2">
+        {Array.from({ length: totalHearts }).map((_, index) => (
+          <Heart
+            key={index}
+            size={24}
+            className={index < filledHearts ? "text-red-600" : "text-gray-400"}
+            fill={index < filledHearts ? "#DC2626" : "#9CA3AF"}
+          />
+        ))}
       </div>
     </div>
   );
