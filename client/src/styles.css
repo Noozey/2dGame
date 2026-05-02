@@ -13,3 +13,31 @@ body,
 body {
     margin: 0;
 }
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #0f0f0f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+#root {
+    z-index: 10;
+    padding: 10px;
+    width: 100%;
+}
+#canvas {
+    border: 2px solid #333;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    cursor: none;
+    width: auot;
+    height: 976px;
+    object-fit: contain;
+}

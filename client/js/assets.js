@@ -13,4 +13,8 @@ export const assets = {
   crosshair: load("./img/crosshair.png"),
   shoot: load("./img/muzzle.png"),
   map: load("./img/map.png"),
+  handgun: load("./img/handgun.png"),
+  shotgun: load("./img/shotgun.png"),
+  machineGun: load("./img/machineGun.png"),
+  bullet: load("./img/bullet.png"),
 };

@@ -31,15 +31,21 @@ export class RenderSystem {
     player.draw(flip, camera.x, camera.y, frameCount);
   }
 
-  drawGun(playerX, playerY, mouseWorldX, mouseWorldY, flip, camera) {
+  drawGun(
+    gunManager,
+    playerX,
+    playerY,
+    mouseWorldX,
+    mouseWorldY,
+    flip,
+    camera,
+  ) {
     const gunX = flip ? playerX + 5 : playerX + 35;
     const gunY = playerY + 40;
     const angle = Math.atan2(mouseWorldY - gunY, mouseWorldX - gunX);
 
-    this.gunSprite.dx = gunX;
-    this.gunSprite.dy = gunY;
-    this.gunSprite.angle = angle;
-    this.gunSprite.draw(flip, camera.x, camera.y);
+    gunManager.drawGun(this.c, playerX, playerY, angle, flip, camera);
+    gunManager.drawBullets(this.c, camera);
   }
 
   drawCrosshair(mouseX, mouseY, flip) {

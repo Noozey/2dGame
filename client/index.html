@@ -5,37 +5,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Multiplayer Game</title>
     </head>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: #0f0f0f;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-
-        #root {
-            z-index: 10;
-            border: 2px solid;
-            width: 100%;
-        }
-
-        #canvas {
-            border: 2px solid #333;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            cursor: none;
-        }
-    </style>
+    <style></style>
     <body>
-        <canvas id="canvas" class=""></canvas>
+        <canvas id="canvas"></canvas>
         <div id="root"></div>
         <script type="module" src="/src/main.tsx"></script>
-        <script type="module" src="./js/main.js"></script>
+        <script type="module" defer src="./js/main.js"></script>
     </body>
 </html>
