@@ -23,8 +23,8 @@ export const GUN_TYPES = {
   },
   machineGun: {
     name: "Machine Gun",
-    displayW: 90,
-    displayH: 32,
+    displayW: 60,
+    displayH: 20,
     offsetX: 10,
     offsetY: 40,
     bulletSpeed: 1000,
