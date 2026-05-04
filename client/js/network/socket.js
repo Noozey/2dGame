@@ -2,18 +2,20 @@ import { Sprite } from "../classes/Sprite.js";
 
 export class NetworkManager {
   constructor(playerPosition) {
-    this.socket = new WebSocket("ws://localhost:3000");
+    this.socket = window.__gameSocket;
     this.players = new Map();
-    this.myPlayerId = null;
+    this.myPlayerId = window.__playerId ?? null;
+    this.myPlayerNumber = window.__playerNumber ?? 0;
     this.playerPosition = playerPosition;
+    this.onHealthUpdate = null;
+
     this.initializeSocket();
     this.startPositionUpdates();
   }
 
   initializeSocket() {
-    this.socket.addEventListener("open", () => {
-      console.log("Connected to server");
-    });
+    // Remove App.tsx's onmessage so it doesn't interfere
+    this.socket.onmessage = null;
 
     this.socket.addEventListener("message", (event) => {
       this.handleMessage(JSON.parse(event.data));
@@ -24,27 +26,29 @@ export class NetworkManager {
     switch (message.type) {
       case "init":
         this.myPlayerId = message.id;
+        this.myPlayerNumber = message.playerNumber;
         this.playerPosition.x = message.position.x;
         this.playerPosition.y = message.position.y;
-        this.myPlayerNumber = message.playerNumber;
+
         break;
 
       case "update":
-        if (message.id !== this.myPlayerId) {
-          if (this.players.has(message.id)) {
-            const playerData = this.players.get(message.id);
-            playerData.targetX = message.position.x;
-            playerData.targetY = message.position.y;
-          } else {
-            this.players.set(message.id, {
-              x: message.position.x,
-              y: message.position.y,
-              targetX: message.position.x,
-              targetY: message.position.y,
-              playerNumber: message.playerNumber,
-              sprite: this.createPlayerSprite(message.playerNumber),
-            });
-          }
+        if (message.id === this.myPlayerId) break; // skip self
+
+        if (this.players.has(message.id)) {
+          const p = this.players.get(message.id);
+          p.targetX = message.position.x;
+          p.targetY = message.position.y;
+          p.playerNumber = message.playerNumber;
+        } else {
+          this.players.set(message.id, {
+            x: message.position.x,
+            y: message.position.y,
+            targetX: message.position.x,
+            targetY: message.position.y,
+            playerNumber: message.playerNumber,
+            sprite: this.createPlayerSprite(message.playerNumber),
+          });
         }
         break;
 
@@ -56,29 +60,30 @@ export class NetworkManager {
               detail: { health: message.health },
             }),
           );
+          if (this.onHealthUpdate) this.onHealthUpdate(message.health);
         }
         break;
 
       case "dead":
         if (message.id === this.myPlayerId) {
-          console.log("You died!");
         } else {
-          console.log("Enemy died!");
+          this.players.delete(message.id);
         }
         break;
 
       case "disconnect":
-        console.log("Player disconnected:", message.id);
-        const deleted = this.players.delete(message.id);
-        console.log("Player removed from map:", deleted);
-        console.log("Remaining players:", this.players.size);
+        this.players.delete(message.id);
+        break;
+
+      case "error":
+        console.error("Server error:", message.message);
         break;
     }
   }
 
-  sendHit(targetId) {
+  sendHit(targetId, damage) {
     if (this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type: "hit", targetId }));
+      this.socket.send(JSON.stringify({ type: "hit", targetId, damage }));
     }
   }
 
@@ -88,8 +93,10 @@ export class NetworkManager {
 
   createPlayerSprite(playerNumber) {
     const idleImg = new Image();
-    idleImg.src = `img/player${playerNumber + 1}/idle.png`;
-    console.log(idleImg);
+    idleImg.src = `./img/player${playerNumber + 1}/idle.png`;
+    idleImg.onload = () =>
+      (idleImg.onerror = () =>
+        console.error(`❌ Sprite failed: player${playerNumber + 1}`));
     return new Sprite(idleImg, 6);
   }
 
@@ -97,10 +104,7 @@ export class NetworkManager {
     setInterval(() => {
       if (this.socket.readyState === WebSocket.OPEN && this.myPlayerId) {
         this.socket.send(
-          JSON.stringify({
-            type: "move",
-            position: this.playerPosition,
-          }),
+          JSON.stringify({ type: "move", position: this.playerPosition }),
         );
       }
     }, 16);

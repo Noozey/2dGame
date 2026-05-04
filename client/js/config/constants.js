@@ -1,5 +1,5 @@
-export const CANVAS_WIDTH = 1200;
-export const CANVAS_HEIGHT = 700;
+export const CANVAS_WIDTH = 1920;
+export const CANVAS_HEIGHT = 1080;
 
 export const WORLD_WIDTH = 3000;
 export const WORLD_HEIGHT = 2000;

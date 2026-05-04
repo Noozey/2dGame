@@ -16,13 +16,25 @@ export class Player {
   }
 
   _idleImg() {
-    return this.playerNumber === 0 ? assets.player1Idle : assets.player2Idle;
+    switch (this.playerNumber) {
+      case 0:
+        return assets.player1Idle;
+      case 1:
+        return assets.player2Idle;
+      case 2:
+        return assets.player3Idle;
+    }
   }
 
   _walkImg() {
-    return this.playerNumber === 0
-      ? assets.player1Walking
-      : assets.player2Walking;
+    switch (this.playerNumber) {
+      case 0:
+        return assets.player1Walking;
+      case 1:
+        return assets.player2Walking;
+      case 2:
+        return assets.player3Walking;
+    }
   }
 
   setMoving(isMoving) {

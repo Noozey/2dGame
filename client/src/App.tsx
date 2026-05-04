@@ -1,38 +1,75 @@
-import { useEffect, useState } from "react";
-import { Heart } from "lucide-react";
+import { useCallback, useState } from "react";
+import type { Screen } from "./types";
+import { useHealth } from "./hooks/useHealth";
+import { useSoundSettings } from "./hooks/useSoundSettings";
+import { useGameEvents } from "./hooks/useGameEvents";
+import { SettingsModal } from "./components/SettingsModal";
+import { MenuScreen } from "./components/MenuScreen";
+import { GameHUD } from "./components/GameHUD";
 
 export default function App() {
-  const [health, setHealth] = useState(100);
+  const [screen, setScreen] = useState<Screen>("menu");
+  const [roomCode, setRoomCode] = useState("");
+  const [currentGun, setCurrentGun] = useState("handgun");
+  const [showSettings, setShowSettings] = useState(false);
 
-  useEffect(() => {
-    const handleHealth = (e: CustomEvent) => {
-      setHealth(e.detail.health);
-    };
-    window.addEventListener("healthUpdate", handleHealth as EventListener);
-    return () => {
-      window.removeEventListener("healthUpdate", handleHealth as EventListener);
-    };
+  const { health } = useHealth();
+  const { soundSettings, updateSetting } = useSoundSettings();
+
+  const handleGameOver = useCallback(() => {
+    setScreen("menu");
+    setRoomCode("");
   }, []);
 
-  const totalHearts = 10;
-  const filledHearts = Math.ceil(health / 10);
+  const handleGunSwitch = useCallback((gun: string) => {
+    setCurrentGun(gun);
+  }, []);
+
+  useGameEvents({
+    screen,
+    onGameOver: handleGameOver,
+    onGunSwitch: handleGunSwitch,
+  });
+
+  function handleGameStart(
+    code: string,
+    socket: WebSocket,
+    id: string,
+    playerNumber: number,
+  ) {
+    window.__gameSocket = socket;
+    window.__playerId = id;
+    window.__playerNumber = playerNumber;
+    setRoomCode(code);
+    setCurrentGun("handgun");
+    setScreen("game");
+  }
 
   return (
-    <div>
-      <div id="ui-root" className="flex flex-col items-center">
-        <div className="flex justify-center gap-1 mb-2">
-          {Array.from({ length: totalHearts }).map((_, index) => (
-            <Heart
-              key={index}
-              size={24}
-              className={
-                index < filledHearts ? "text-red-600" : "text-gray-400"
-              }
-              fill={index < filledHearts ? "#DC2626" : "#9CA3AF"}
-            />
-          ))}
-        </div>
-      </div>
+    <div style={{ position: "relative", background: "#050709" }}>
+      {screen === "menu" ? (
+        <MenuScreen
+          onShowSettings={() => setShowSettings(true)}
+          onGameStart={handleGameStart}
+        />
+      ) : (
+        <GameHUD
+          health={health}
+          roomCode={roomCode}
+          currentGun={currentGun}
+          onShowSettings={() => setShowSettings(true)}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          soundSettings={soundSettings}
+          onUpdateSetting={updateSetting}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

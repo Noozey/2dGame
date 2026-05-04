@@ -1,4 +1,3 @@
-// classes/Bullet.js — no imports needed
 export class Bullet {
   constructor(x, y, angle, speed, damage, ownerId) {
     this.x = x;
@@ -9,10 +8,12 @@ export class Bullet {
     this.ownerId = ownerId;
     this.alive = true;
     this.distanceTravelled = 0;
-    this.maxDistance = 700;
+    this.maxDistance = 500;
   }
 
   update(dt) {
+    this.prevX = this.x;
+    this.prevY = this.y;
     const dx = Math.cos(this.angle) * this.speed * dt;
     const dy = Math.sin(this.angle) * this.speed * dt;
     this.x += dx;
@@ -22,7 +23,6 @@ export class Bullet {
   }
 
   draw(c, bulletImg, camera) {
-    // bulletImg is passed in from GunManager.drawBullets()
     if (!bulletImg?.complete || bulletImg.naturalWidth === 0) return;
     c.save();
     c.translate(this.x - camera.x, this.y - camera.y);

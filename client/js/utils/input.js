@@ -15,12 +15,24 @@ export const mouse = {
   right: false,
 };
 
-export function initializeInputHandlers() {
-  window.addEventListener("mousemove", (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+export function initializeInputHandlers(canvas) {
+  // lock cursor on click
+  canvas.addEventListener("click", () => {
+    canvas.requestPointerLock();
   });
 
+  document.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement === canvas) {
+      mouse.x += e.movementX;
+      mouse.y += e.movementY;
+
+      // keep inside canvas
+      mouse.x = Math.max(0, Math.min(canvas.width, mouse.x));
+      mouse.y = Math.max(0, Math.min(canvas.height, mouse.y));
+    }
+  });
+
+  // keep your existing key + mouse buttons
   window.addEventListener("keydown", (e) => {
     key[e.key.toLowerCase()] = true;
   });
