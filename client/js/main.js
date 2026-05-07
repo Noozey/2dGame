@@ -191,6 +191,16 @@ function initGame() {
               playerData.sprite.frames = 6;
             }
             break;
+
+          case 3:
+            if (moving) {
+              playerData.sprite.img = assets.player4Walking;
+              playerData.sprite.frames = 8;
+            } else {
+              playerData.sprite.img = assets.player4Idle;
+              playerData.sprite.frames = 6;
+            }
+            break;
         }
       }
     });
