@@ -67,7 +67,7 @@ export class GunManager {
     const gunX = (flip ? playerX + 5 : playerX + cfg.offsetX) - camera.x;
     const gunY = playerY + cfg.offsetY - camera.y;
 
-    c.save(); // ✅ fixed — was corrupted to [c.save](http://c.save)()
+    c.save();
     c.translate(gunX, gunY);
     c.rotate(angle);
     if (flip) c.scale(1, -1);

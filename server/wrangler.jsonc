@@ -1,0 +1,28 @@
+{
+  "name": "shooter-server",
+  "main": "index.ts",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "workers_dev": true,
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WEBSOCKET_HANDLER",
+        "class_name": "WebSocketHandler",
+      },
+    ],
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["WebSocketHandler"],
+    },
+  ],
+
+  "vars": {
+    "ENVIRONMENT": "production",
+  },
+}

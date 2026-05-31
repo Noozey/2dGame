@@ -23,6 +23,8 @@ export class Player {
         return assets.player2Idle;
       case 2:
         return assets.player3Idle;
+      case 3:
+        return assets.player4Idle;
     }
   }
 
@@ -34,6 +36,8 @@ export class Player {
         return assets.player2Walking;
       case 2:
         return assets.player3Walking;
+      case 3:
+        return assets.player4Walking;
     }
   }
 

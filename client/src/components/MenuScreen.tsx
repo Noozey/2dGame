@@ -27,7 +27,7 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
   function connectAndSend(payload: object) {
     setError("");
     setLoading(true);
-    const socket = new WebSocket("ws://localhost:3000");
+    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
 
     socket.onopen = () => socket.send(JSON.stringify(payload));
 

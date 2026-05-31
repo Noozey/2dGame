@@ -19,3 +19,7 @@ export const GUN_OFFSET_Y = 30;
 export const HEAD_HEIGHT = 30;
 export const HEAD_ADJUSTMENT = 12;
 export const LEGS_HEIGHT_ADJUSTMENT = 22;
+
+export const MAP_COLS = 20;
+export const MAP_ROWS = 15;
+export const TILE_SIZE = 64;

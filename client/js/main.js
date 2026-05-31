@@ -191,6 +191,16 @@ function initGame() {
               playerData.sprite.frames = 6;
             }
             break;
+
+          case 3:
+            if (moving) {
+              playerData.sprite.img = assets.player4Walking;
+              playerData.sprite.frames = 8;
+            } else {
+              playerData.sprite.img = assets.player4Idle;
+              playerData.sprite.frames = 6;
+            }
+            break;
         }
       }
     });
@@ -202,7 +212,7 @@ function initGame() {
 
     // --- Angle ---
     const gunPivotX = playerPosition.x + (flip ? 5 : 35);
-    const gunPivotY = playerPosition.y + 40;
+    const gunPivotY = playerPosition.y;
     const angle = Math.atan2(mouseWorldY - gunPivotY, mouseWorldX - gunPivotX);
 
     // --- Shooting ---
