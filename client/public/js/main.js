@@ -13,8 +13,8 @@ import { Player } from "./classes/Player.js";
 import { createCollisionMap, createBoundaries } from "./utils/collision.js";
 import { key, mouse, initializeInputHandlers } from "./utils/input.js";
 import { NetworkManager } from "./network/socket.js";
-import { resolveMovement } from "./systems/collisionsystem.js";
-import { updateCamera } from "./systems/camerasystem.js";
+import { resolveMovement } from "./systems/CollisionSystem.js";
+import { updateCamera } from "./systems/CameraSystem.js";
 import { RenderSystem } from "./systems/RenderSystem.js";
 import {
   backgroundAudio,
