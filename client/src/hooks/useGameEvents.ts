@@ -12,6 +12,7 @@ export function useGameEvents({
   onGameOver,
   onGunSwitch,
 }: UseGameEventsOptions) {
+  const update = "heoo";
   // Game over → reset to menu
   useEffect(() => {
     window.addEventListener("gameOver", onGameOver);
