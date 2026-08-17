@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "shooter-server" generated at 2026-06-01T11:09:28.831Z.

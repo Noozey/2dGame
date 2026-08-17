@@ -65,10 +65,41 @@ export class NetworkManager {
         break;
 
       case "dead":
+        // Fire the kill-feed event for every death, not just our own, so
+        // the feed shows the whole match's kills.
+        window.dispatchEvent(
+          new CustomEvent("killFeedEvent", {
+            detail: {
+              killerNumber:
+                typeof message.killerNumber === "number"
+                  ? message.killerNumber
+                  : null,
+              victimNumber: message.victimNumber,
+              victimIsMe: message.id === this.myPlayerId,
+            },
+          }),
+        );
+
         if (message.id === this.myPlayerId) {
+          window.dispatchEvent(new CustomEvent("localPlayerDied"));
         } else {
+          // Remove them from the world immediately — no ghost sprite
+          // lingering until the next "update" comes in.
           this.players.delete(message.id);
         }
+        break;
+
+      case "respawned":
+        // Server confirming *our* respawn: snap back to the new spawn point
+        this.playerPosition.x = message.position.x;
+        this.playerPosition.y = message.position.y;
+        window.dispatchEvent(
+          new CustomEvent("healthUpdate", {
+            detail: { health: message.health },
+          }),
+        );
+        if (this.onHealthUpdate) this.onHealthUpdate(message.health);
+        window.dispatchEvent(new CustomEvent("localPlayerRespawned"));
         break;
 
       case "disconnect":
@@ -84,6 +115,12 @@ export class NetworkManager {
   sendHit(targetId, damage) {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ type: "hit", targetId, damage }));
+    }
+  }
+
+  sendRespawn() {
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: "respawn" }));
     }
   }
 

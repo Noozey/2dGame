@@ -1,4 +1,4 @@
-export type Screen = "menu" | "game";
+export type Screen = "menu" | "game" | "lobby";
 
 export interface SoundSettings {
   masterVolume: number;

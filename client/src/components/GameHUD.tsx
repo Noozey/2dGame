@@ -1,11 +1,20 @@
-import { Heart, Settings, Shield, Wifi } from "lucide-react";
+import { Heart, Settings, Shield, Wifi, Crosshair, Skull as SkullIcon } from "lucide-react";
 import { useState, useEffect } from "react";
+import { DeathScreen } from "./DeathScreen";
+import { KillFeed } from "./KillFeed";
+import type { KillFeedEntry } from "../hooks/useKillFeed";
 
 interface GameHUDProps {
   health: number;
   roomCode: string;
   currentGun: string;
+  death: boolean;
+  killFeed: KillFeedEntry[];
+  myKills: number;
+  myDeaths: number;
   onShowSettings: () => void;
+  onRespawn: () => void;
+  onLeaveMatch: () => void;
 }
 
 const GUNS = [
@@ -20,7 +29,13 @@ export function GameHUD({
   health,
   roomCode,
   currentGun,
+  death,
+  killFeed,
+  myKills,
+  myDeaths,
   onShowSettings,
+  onRespawn,
+  onLeaveMatch,
 }: GameHUDProps) {
   const filledHearts = Math.ceil(health / 10);
   const healthColor =
@@ -148,31 +163,56 @@ export function GameHUD({
             borderRadius: "3px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "14px",
           }}
         >
-          <Wifi size={9} color="#4ade80" />
-          <span
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Wifi size={9} color="#4ade80" />
+            <span
+              style={{
+                color: "#2d5a3d",
+                fontSize: "9px",
+                letterSpacing: "0.12em",
+              }}
+            >
+              ROOM
+            </span>
+            <span
+              style={{
+                color: "#4ade80",
+                fontSize: "13px",
+                letterSpacing: "0.35em",
+              }}
+            >
+              {roomCode}
+            </span>
+            {copied && (
+              <span style={{ color: "#4ade80", fontSize: "11px" }}>
+                copied!
+              </span>
+            )}
+          </div>
+
+          <div
             style={{
-              color: "#2d5a3d",
-              fontSize: "9px",
-              letterSpacing: "0.12em",
+              width: "1px",
+              height: "14px",
+              background: "#1e3a2f",
             }}
-          >
-            ROOM
-          </span>
-          <span
-            style={{
-              color: "#4ade80",
-              fontSize: "13px",
-              letterSpacing: "0.35em",
-            }}
-          >
-            {roomCode}
-          </span>
-          {copied && (
-            <span style={{ color: "#4ade80", fontSize: "11px" }}>copied!</span>
-          )}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <Crosshair size={10} color="#4ade80" />
+            <span style={{ color: "#4ade80", fontSize: "11px" }}>
+              {myKills}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <SkullIcon size={10} color="#ef4444" />
+            <span style={{ color: "#ef4444", fontSize: "11px" }}>
+              {myDeaths}
+            </span>
+          </div>
         </div>
 
         {/* Settings button */}
@@ -257,6 +297,12 @@ export function GameHUD({
           );
         })}
       </div>
+
+      <KillFeed entries={killFeed} />
+
+      {death && (
+        <DeathScreen onRespawn={onRespawn} onLeaveMatch={onLeaveMatch} />
+      )}
     </>
   );
 }

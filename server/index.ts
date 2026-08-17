@@ -16,6 +16,19 @@ interface Room {
 
 interface Env {}
 
+// The map is a walled 20x15 tile maze (64px tiles). These four points sit in
+// the open pockets tucked into each corner, clear of walls.
+const SPAWN_POINTS: { x: number; y: number }[] = [
+  { x: 100, y: 50 }, // top-left
+  { x: 1100, y: 50 }, // top-right
+  { x: 150, y: 800 }, // bottom-left
+  { x: 1100, y: 800 }, // bottom-right
+];
+
+function spawnPointFor(playerNumber: number): { x: number; y: number } {
+  return SPAWN_POINTS[playerNumber] ?? SPAWN_POINTS[0];
+}
+
 export default {
   async fetch(
     request: Request,
@@ -117,7 +130,13 @@ export class WebSocketHandler extends DurableObject<Env> {
       const playerId = randomUUID();
       const playerNumber = this.getNextPlayerNumber(room);
       room.usedNumbers.add(playerNumber);
-      room.players.set(playerId, { x: 300, y: 250, playerNumber, health: 100 });
+      const spawn = spawnPointFor(playerNumber);
+      room.players.set(playerId, {
+        x: spawn.x,
+        y: spawn.y,
+        playerNumber,
+        health: 100,
+      });
       room.clients.add(ws);
       this.socketMeta.set(ws, { playerId, roomCode });
 
@@ -131,7 +150,7 @@ export class WebSocketHandler extends DurableObject<Env> {
           id: playerId,
           playerNumber,
           roomCode,
-          position: { x: 300, y: 250 },
+          position: { x: spawn.x, y: spawn.y },
         }),
       );
 
@@ -154,7 +173,7 @@ export class WebSocketHandler extends DurableObject<Env> {
           type: "update",
           id: playerId,
           playerNumber,
-          position: { x: 300, y: 250 },
+          position: { x: spawn.x, y: spawn.y },
         },
         ws,
       );
@@ -169,6 +188,9 @@ export class WebSocketHandler extends DurableObject<Env> {
       if (!room) return;
       const player = room.players.get(meta.playerId);
       if (!player) return;
+      // Dead players don't broadcast position — keeps them off everyone
+      // else's screen until they respawn.
+      if (player.health <= 0) return;
       player.x = message.position.x;
       player.y = message.position.y;
       this.broadcastToRoom(
@@ -190,8 +212,10 @@ export class WebSocketHandler extends DurableObject<Env> {
       if (!meta) return;
       const room = this.rooms.get(meta.roomCode);
       if (!room) return;
+      const killer = room.players.get(meta.playerId);
       const targetPlayer = room.players.get(message.targetId);
       if (!targetPlayer) return;
+      if (targetPlayer.health <= 0) return; // already dead, ignore stray hits
       const damage = Math.min(message.damage ?? 10, 100);
       targetPlayer.health = Math.max(0, targetPlayer.health - damage);
       this.broadcastToRoom(meta.roomCode, {
@@ -203,8 +227,51 @@ export class WebSocketHandler extends DurableObject<Env> {
         this.broadcastToRoom(meta.roomCode, {
           type: "dead",
           id: message.targetId,
+          victimNumber: targetPlayer.playerNumber,
+          killerId: meta.playerId,
+          killerNumber: killer?.playerNumber ?? null,
         });
       }
+      return;
+    }
+
+    // --- Respawn ---
+    if (message.type === "respawn") {
+      const meta = this.socketMeta.get(ws);
+      if (!meta) return;
+      const room = this.rooms.get(meta.roomCode);
+      if (!room) return;
+      const player = room.players.get(meta.playerId);
+      if (!player) return;
+
+      // Only allow respawning if the player is actually dead
+      if (player.health > 0) return;
+
+      const spawn = spawnPointFor(player.playerNumber);
+      player.health = 100;
+      player.x = spawn.x;
+      player.y = spawn.y;
+
+      // Tell the respawning client where they are now
+      ws.send(
+        JSON.stringify({
+          type: "respawned",
+          position: { x: player.x, y: player.y },
+          health: player.health,
+        }),
+      );
+
+      // Let everyone else know this player is back in the fight
+      this.broadcastToRoom(
+        meta.roomCode,
+        {
+          type: "update",
+          id: meta.playerId,
+          playerNumber: player.playerNumber,
+          position: { x: player.x, y: player.y },
+        },
+        ws,
+      );
       return;
     }
   }

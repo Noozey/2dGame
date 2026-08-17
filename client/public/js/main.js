@@ -21,6 +21,7 @@ import {
   playGunfire,
   startFootsteps,
   stopFootsteps,
+  maybePlayOpponentFootstep,
 } from "./utils/sound.js";
 import { assets } from "./assets.js";
 import { GunManager } from "./classes/gunManager.js";
@@ -44,6 +45,7 @@ function initGame() {
   let lastTime = 0;
   let isFiring = false;
   let animFrameId;
+  let isDead = false;
 
   // ─── Systems & Managers ────────────────────────────────────────────────────
   const localPlayer = new Player(0);
@@ -85,6 +87,22 @@ function initGame() {
 
   canvas.addEventListener("mouseup", () => (isFiring = false));
 
+  // ─── Death / Respawn ───────────────────────────────────────────────────────
+  window.addEventListener("localPlayerDied", () => {
+    isDead = true;
+    isFiring = false;
+    stopFootsteps();
+  });
+
+  window.addEventListener("localPlayerRespawned", () => {
+    isDead = false;
+  });
+
+  // React's death screen asks the network for a respawn
+  window.addEventListener("requestRespawn", () => {
+    network.sendRespawn();
+  });
+
   // ─── Stop game if disconnected ─────────────────────────────────────────────
   window.__gameSocket.addEventListener("close", () => {
     console.log("Disconnected from server");
@@ -105,13 +123,15 @@ function initGame() {
     let moveX = 0,
       moveY = 0;
 
-    if (key.a || key.d || key.s || key.w) startFootsteps();
+    if (!isDead && (key.a || key.d || key.s || key.w)) startFootsteps();
     else stopFootsteps();
 
-    if (key.a) moveX -= 1;
-    if (key.d) moveX += 1;
-    if (key.w) moveY -= 1;
-    if (key.s) moveY += 1;
+    if (!isDead) {
+      if (key.a) moveX -= 1;
+      if (key.d) moveX += 1;
+      if (key.w) moveY -= 1;
+      if (key.s) moveY += 1;
+    }
 
     // --- Movement & Collision ---
     const resolved = resolveMovement(
@@ -136,7 +156,7 @@ function initGame() {
     if (network.myPlayerNumber !== undefined) {
       localPlayer.setPlayerNumber(network.myPlayerNumber);
     }
-    const isMoving = key.a || key.d || key.w || key.s;
+    const isMoving = !isDead && (key.a || key.d || key.w || key.s);
     localPlayer.setMoving(isMoving);
     localPlayer.update(playerPosition.x, playerPosition.y);
 
@@ -157,6 +177,13 @@ function initGame() {
         (Math.abs(prev.x - playerData.x) > 0.5 ||
           Math.abs(prev.y - playerData.y) > 0.5);
       prevPositions.set(id, { x: playerData.x, y: playerData.y });
+
+      // Directional footsteps: panned left/right by where they are relative
+      // to us, and quieter the farther away they are (covers "up/down" too,
+      // since distance factors in both axes).
+      const dx = playerData.x - playerPosition.x;
+      const dy = playerData.y - playerPosition.y;
+      maybePlayOpponentFootstep(id, dx, dy, moving, performance.now());
 
       if (playerData.sprite) {
         const num = playerData.playerNumber ?? 0;
@@ -216,7 +243,7 @@ function initGame() {
     const angle = Math.atan2(mouseWorldY - gunPivotY, mouseWorldX - gunPivotX);
 
     // --- Shooting ---
-    if (isFiring) {
+    if (isFiring && !isDead) {
       const muzzle = guns.getMuzzlePosition(
         playerPosition.x,
         playerPosition.y,
@@ -302,16 +329,18 @@ function initGame() {
     renderer.drawMap(camera);
     renderer.drawBoundaries(boundaries, camera);
     renderer.drawNetworkPlayers(networkPlayers, camera, frameCount);
-    renderer.drawPlayer(localPlayer, flip, camera, frameCount);
-    renderer.drawGun(
-      guns,
-      playerPosition.x,
-      playerPosition.y,
-      mouseWorldX,
-      mouseWorldY,
-      flip,
-      camera,
-    );
+    if (!isDead) {
+      renderer.drawPlayer(localPlayer, flip, camera, frameCount);
+      renderer.drawGun(
+        guns,
+        playerPosition.x,
+        playerPosition.y,
+        mouseWorldX,
+        mouseWorldY,
+        flip,
+        camera,
+      );
+    }
     renderer.drawCrosshair(mouse.x, mouse.y, flip);
 
     frameCount++;
