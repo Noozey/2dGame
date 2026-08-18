@@ -6,6 +6,7 @@ interface Player {
   y: number;
   playerNumber: number;
   health: number;
+  ping: number;
 }
 
 interface Room {
@@ -43,9 +44,28 @@ export default {
 export class WebSocketHandler extends DurableObject<Env> {
   rooms = new Map<string, Room>();
   socketMeta = new Map<WebSocket, { playerId: string; roomCode: string }>();
+  pendingPings = new Map<WebSocket, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    // Server-authoritative latency check: ping every connected socket every
+    // few seconds and broadcast the measured round-trip time to its room so
+    // everyone can see everyone's ping.
+    setInterval(() => this.pingAllClients(), 3000);
+  }
+
+  pingAllClients(): void {
+    const now = Date.now();
+    this.socketMeta.forEach((_meta, ws) => {
+      if (ws.readyState === 1) {
+        this.pendingPings.set(ws, now);
+        try {
+          ws.send(JSON.stringify({ type: "serverPing", t: now }));
+        } catch {
+          // socket went away between the readyState check and send; ignore
+        }
+      }
+    });
   }
 
   broadcastToRoom(
@@ -104,8 +124,25 @@ export class WebSocketHandler extends DurableObject<Env> {
       return;
     }
 
-    if (message.type === "ping") {
-      ws.send("pong");
+    if (message.type === "pong") {
+      const meta = this.socketMeta.get(ws);
+      if (!meta) return;
+      const sentAt = this.pendingPings.get(ws);
+      if (sentAt === undefined) return;
+      this.pendingPings.delete(ws);
+      const rtt = Date.now() - sentAt;
+      const room = this.rooms.get(meta.roomCode);
+      if (!room) return;
+      const player = room.players.get(meta.playerId);
+      if (!player) return;
+      player.ping = rtt;
+      this.broadcastToRoom(meta.roomCode, {
+        type: "ping",
+        id: meta.playerId,
+        playerNumber: player.playerNumber,
+        ping: rtt,
+      });
+      return;
     }
     // --- Join Room ---
     if (message.type === "joinRoom") {
@@ -136,6 +173,7 @@ export class WebSocketHandler extends DurableObject<Env> {
         y: spawn.y,
         playerNumber,
         health: 100,
+        ping: 0,
       });
       room.clients.add(ws);
       this.socketMeta.set(ws, { playerId, roomCode });
@@ -277,6 +315,7 @@ export class WebSocketHandler extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
+    this.pendingPings.delete(ws);
     const meta = this.socketMeta.get(ws);
     if (!meta) return;
     const { playerId, roomCode } = meta;
@@ -297,6 +336,7 @@ export class WebSocketHandler extends DurableObject<Env> {
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
     console.error("WebSocket error:", error);
+    this.pendingPings.delete(ws);
     this.socketMeta.delete(ws);
   }
 }

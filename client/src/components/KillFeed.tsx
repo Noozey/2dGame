@@ -24,7 +24,7 @@ export function KillFeed({ entries }: KillFeedProps) {
     <div
       style={{
         position: "fixed",
-        top: "16px",
+        top: "230px",
         right: "16px",
         zIndex: 150,
         display: "flex",

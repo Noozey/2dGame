@@ -2,6 +2,9 @@ import { Heart, Settings, Shield, Wifi, Crosshair, Skull as SkullIcon } from "lu
 import { useState, useEffect } from "react";
 import { DeathScreen } from "./DeathScreen";
 import { KillFeed } from "./KillFeed";
+import { Scoreboard } from "./Scoreboard";
+import { usePing } from "../hooks/usePing";
+import { useScoreboard } from "../hooks/useScoreboard";
 import type { KillFeedEntry } from "../hooks/useKillFeed";
 
 interface GameHUDProps {
@@ -42,6 +45,8 @@ export function GameHUD({
     health > 50 ? "#4ade80" : health > 25 ? "#fbbf24" : "#ef4444";
 
   const [copied, setCopied] = useState(false);
+  const ping = usePing();
+  const { players } = useScoreboard();
 
   useEffect(() => {
     navigator.clipboard
@@ -213,6 +218,29 @@ export function GameHUD({
               {myDeaths}
             </span>
           </div>
+
+          <div
+            style={{
+              width: "1px",
+              height: "14px",
+              background: "#1e3a2f",
+            }}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <Wifi
+              size={10}
+              color={ping < 80 ? "#4ade80" : ping < 160 ? "#fbbf24" : "#ef4444"}
+            />
+            <span
+              style={{
+                color: ping < 80 ? "#4ade80" : ping < 160 ? "#fbbf24" : "#ef4444",
+                fontSize: "11px",
+              }}
+            >
+              {ping}ms
+            </span>
+          </div>
         </div>
 
         {/* Settings button */}
@@ -298,6 +326,7 @@ export function GameHUD({
         })}
       </div>
 
+      <Scoreboard players={players} />
       <KillFeed entries={killFeed} />
 
       {death && (

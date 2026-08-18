@@ -161,12 +161,19 @@ function initGame() {
     localPlayer.update(playerPosition.x, playerPosition.y);
 
     // --- Network Players: Interpolation ---
+    // Frame-rate independent smoothing: convert the per-frame lerp factor
+    // into an exponential smoothing based on elapsed time so movement looks
+    // equally smooth whether the game is running at 30fps or 144fps, and so
+    // it still catches up quickly after a lag spike (a big dt) instead of
+    // lurching forward at a fixed step.
     const networkPlayers = network.getPlayers();
+    const INTERP_SPEED = 14; // higher = snappier catch-up to the server position
+    const interpFactor = 1 - Math.exp(-INTERP_SPEED * dt);
     networkPlayers.forEach((playerData) => {
       playerData.vx = playerData.targetX - playerData.x;
       playerData.vy = playerData.targetY - playerData.y;
-      playerData.x += playerData.vx * 0.2;
-      playerData.y += playerData.vy * 0.2;
+      playerData.x += playerData.vx * interpFactor;
+      playerData.y += playerData.vy * interpFactor;
     });
 
     // --- Network Players: Sprite Switch ---

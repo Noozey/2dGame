@@ -9,8 +9,21 @@ export class NetworkManager {
     this.playerPosition = playerPosition;
     this.onHealthUpdate = null;
 
+    // Lobby/scoreboard roster — one entry per connected player, keyed by
+    // their playerId, kept in sync from server broadcasts.
+    this.roster = new Map();
+
     this.initializeSocket();
     this.startPositionUpdates();
+  }
+
+  emitScoreboard() {
+    const players = Array.from(this.roster.values()).sort(
+      (a, b) => a.playerNumber - b.playerNumber,
+    );
+    window.dispatchEvent(
+      new CustomEvent("scoreboardUpdate", { detail: { players } }),
+    );
   }
 
   initializeSocket() {
@@ -30,9 +43,38 @@ export class NetworkManager {
         this.playerPosition.x = message.position.x;
         this.playerPosition.y = message.position.y;
 
+        this.roster.set(message.id, {
+          playerId: message.id,
+          playerNumber: message.playerNumber,
+          alive: true,
+          kills: 0,
+          deaths: 0,
+          ping: 0,
+          isMe: true,
+        });
+        this.emitScoreboard();
         break;
 
       case "update":
+        if (!this.roster.has(message.id)) {
+          this.roster.set(message.id, {
+            playerId: message.id,
+            playerNumber: message.playerNumber,
+            alive: true,
+            kills: 0,
+            deaths: 0,
+            ping: 0,
+            isMe: message.id === this.myPlayerId,
+          });
+        } else {
+          const entry = this.roster.get(message.id);
+          entry.playerNumber = message.playerNumber;
+          // Dead players never send/broadcast "move", so simply receiving
+          // an update for them proves they're back among the living.
+          entry.alive = true;
+        }
+        this.emitScoreboard();
+
         if (message.id === this.myPlayerId) break; // skip self
 
         if (this.players.has(message.id)) {
@@ -64,7 +106,18 @@ export class NetworkManager {
         }
         break;
 
-      case "dead":
+      case "dead": {
+        const victimEntry = this.roster.get(message.id);
+        if (victimEntry) {
+          victimEntry.alive = false;
+          victimEntry.deaths += 1;
+        }
+        if (message.killerId && message.killerId !== message.id) {
+          const killerEntry = this.roster.get(message.killerId);
+          if (killerEntry) killerEntry.kills += 1;
+        }
+        this.emitScoreboard();
+
         // Fire the kill-feed event for every death, not just our own, so
         // the feed shows the whole match's kills.
         window.dispatchEvent(
@@ -88,8 +141,9 @@ export class NetworkManager {
           this.players.delete(message.id);
         }
         break;
+      }
 
-      case "respawned":
+      case "respawned": {
         // Server confirming *our* respawn: snap back to the new spawn point
         this.playerPosition.x = message.position.x;
         this.playerPosition.y = message.position.y;
@@ -99,12 +153,40 @@ export class NetworkManager {
           }),
         );
         if (this.onHealthUpdate) this.onHealthUpdate(message.health);
+
+        const myEntry = this.roster.get(this.myPlayerId);
+        if (myEntry) myEntry.alive = true;
+        this.emitScoreboard();
+
         window.dispatchEvent(new CustomEvent("localPlayerRespawned"));
         break;
+      }
 
       case "disconnect":
         this.players.delete(message.id);
+        this.roster.delete(message.id);
+        this.emitScoreboard();
         break;
+
+      case "serverPing":
+        // The server is measuring round-trip time — bounce it straight back.
+        if (this.socket.readyState === WebSocket.OPEN) {
+          this.socket.send(JSON.stringify({ type: "pong", t: message.t }));
+        }
+        break;
+
+      case "ping": {
+        const entry = this.roster.get(message.id);
+        if (entry) entry.ping = message.ping;
+        this.emitScoreboard();
+
+        if (message.id === this.myPlayerId) {
+          window.dispatchEvent(
+            new CustomEvent("pingUpdate", { detail: { ping: message.ping } }),
+          );
+        }
+        break;
+      }
 
       case "error":
         console.error("Server error:", message.message);
