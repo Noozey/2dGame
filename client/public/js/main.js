@@ -4,6 +4,7 @@ import {
   WORLD_WIDTH,
   WORLD_HEIGHT,
   MOVE_SPEED,
+  PLAYER_WIDTH,
   PLAYER_INITIAL_X,
   PLAYER_INITIAL_Y,
 } from "./config/constants.js";
@@ -16,6 +17,11 @@ import { NetworkManager } from "./network/socket.js";
 import { resolveMovement } from "./systems/CollisionSystem.js";
 import { updateCamera } from "./systems/CameraSystem.js";
 import { RenderSystem } from "./systems/RenderSystem.js";
+import {
+  segmentIntersectsAABB,
+  computeVisibilityPolygon,
+  hasLineOfSight,
+} from "./utils/raycast.js";
 import {
   backgroundAudio,
   playGunfire,
@@ -269,26 +275,49 @@ function initGame() {
 
     guns.update(dt);
 
-    function segmentIntersectsAABB(x1, y1, x2, y2, bx, by, bw, bh) {
-      // Check if segment (x1,y1)->(x2,y2) crosses the boundary rectangle
-      const minX = Math.min(x1, x2),
-        maxX = Math.max(x1, x2);
-      const minY = Math.min(y1, y2),
-        maxY = Math.max(y1, y2);
-      if (maxX < bx || minX > bx + bw || maxY < by || minY > by + bh)
-        return false;
+    // --- Vision / Fog of War ---
+    // A 360° visibility polygon around the local player, used both to draw
+    // the fog overlay and to decide which opponents are actually visible
+    // (rather than just letting the fog dim a silhouette through it).
+    const VIEW_DISTANCE = 650;
+    // Half the player's actual sprite width — matches where the character
+    // is really drawn, so the vision origin lines up with it on screen.
+    const PLAYER_CENTER_OFFSET = PLAYER_WIDTH / 2;
+    // Always-visible bubble around the player regardless of nearby walls —
+    // this map's corridors are only ~1 tile wide, so without this the
+    // polygon can shrink to almost nothing and hide the player's own
+    // character. A little peeking past an adjacent wall is an intentional
+    // trade-off for "you can always see yourself."
+    const MIN_VISIBLE_RADIUS = 90;
+    const visionOriginX = playerPosition.x + PLAYER_CENTER_OFFSET;
+    const visionOriginY = playerPosition.y + PLAYER_CENTER_OFFSET;
+    const visibilityPolygon = isDead
+      ? []
+      : computeVisibilityPolygon(
+          visionOriginX,
+          visionOriginY,
+          boundaries,
+          VIEW_DISTANCE,
+          240,
+          MIN_VISIBLE_RADIUS,
+        );
 
-      const dx = x2 - x1,
-        dy = y2 - y1;
-      const tMinX = dx !== 0 ? (bx - x1) / dx : -Infinity;
-      const tMaxX = dx !== 0 ? (bx + bw - x1) / dx : Infinity;
-      const tMinY = dy !== 0 ? (by - y1) / dy : -Infinity;
-      const tMaxY = dy !== 0 ? (by + bh - y1) / dy : Infinity;
-
-      const tEnter = Math.max(Math.min(tMinX, tMaxX), Math.min(tMinY, tMaxY));
-      const tExit = Math.min(Math.max(tMinX, tMaxX), Math.max(tMinY, tMaxY));
-      return tExit >= 0 && tEnter <= 1 && tEnter <= tExit;
-    }
+    const visibleNetworkPlayers = new Map();
+    networkPlayers.forEach((playerData, id) => {
+      const centerX = playerData.x + PLAYER_CENTER_OFFSET;
+      const centerY = playerData.y + PLAYER_CENTER_OFFSET;
+      const visible =
+        isDead ||
+        hasLineOfSight(
+          visionOriginX,
+          visionOriginY,
+          centerX,
+          centerY,
+          boundaries,
+          VIEW_DISTANCE,
+        );
+      if (visible) visibleNetworkPlayers.set(id, playerData);
+    });
 
     // --- Wall collision (raycast per bullet) ---
     guns.bullets.forEach((bullet) => {
@@ -335,7 +364,7 @@ function initGame() {
     renderer.clear();
     renderer.drawMap(camera);
     renderer.drawBoundaries(boundaries, camera);
-    renderer.drawNetworkPlayers(networkPlayers, camera, frameCount);
+    renderer.drawNetworkPlayers(visibleNetworkPlayers, camera, frameCount);
     if (!isDead) {
       renderer.drawPlayer(localPlayer, flip, camera, frameCount);
       renderer.drawGun(
@@ -348,6 +377,13 @@ function initGame() {
         camera,
       );
     }
+    renderer.drawFogOfWar(
+      visibilityPolygon,
+      visionOriginX - camera.x,
+      visionOriginY - camera.y,
+      VIEW_DISTANCE,
+      camera,
+    );
     renderer.drawCrosshair(mouse.x, mouse.y, flip);
 
     frameCount++;

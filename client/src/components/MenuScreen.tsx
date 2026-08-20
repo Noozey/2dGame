@@ -24,10 +24,24 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function connectAndSend(payload: object) {
+  // Each room is its own Durable Object on the server, addressed by room
+  // code, so the socket has to be opened directly at that room's URL (the
+  // Worker routes ?room=CODE to the right instance) — there's no more
+  // "connect first, then ask for a room" round trip.
+  function buildSocketUrl(roomCode: string) {
+    const url = new URL(import.meta.env.VITE_WS_URL);
+    url.searchParams.set("room", roomCode);
+    return url.toString();
+  }
+
+  function generateRoomCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+
+  function connectAndSend(roomCode: string, payload: object) {
     setError("");
     setLoading(true);
-    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+    const socket = new WebSocket(buildSocketUrl(roomCode));
 
     socket.onopen = () => socket.send(JSON.stringify(payload));
 
@@ -38,13 +52,6 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
         setError(msg.message);
         setLoading(false);
         socket.close();
-        return;
-      }
-
-      if (msg.type === "roomCreated") {
-        socket.send(
-          JSON.stringify({ type: "joinRoom", roomCode: msg.roomCode }),
-        );
         return;
       }
 
@@ -64,7 +71,8 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
   }
 
   function handleCreate() {
-    connectAndSend({ type: "createRoom" });
+    const roomCode = generateRoomCode();
+    connectAndSend(roomCode, { type: "createRoom" });
   }
 
   function handleJoin() {
@@ -72,7 +80,8 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
       setError("Enter a valid room code");
       return;
     }
-    connectAndSend({ type: "joinRoom", roomCode: inputCode.trim() });
+    const roomCode = inputCode.trim().toUpperCase();
+    connectAndSend(roomCode, { type: "joinRoom", roomCode });
   }
 
   return (
@@ -88,51 +97,6 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
         overflow: "hidden",
       }}
     >
-      {/* Grid background */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          backgroundImage: `
-            linear-gradient(rgba(74,222,128,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(74,222,128,0.025) 1px, transparent 1px)
-          `,
-          backgroundSize: "40px 40px",
-        }}
-      />
-
-      {/* Radial glow */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background:
-            "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(22,101,52,0.08) 0%, transparent 70%)",
-        }}
-      />
-
-      {/* Corner brackets */}
-      {(["tl", "tr", "bl", "br"] as const).map((c) => (
-        <div
-          key={c}
-          style={{
-            position: "absolute",
-            top: c.startsWith("t") ? "20px" : "auto",
-            bottom: c.startsWith("b") ? "20px" : "auto",
-            left: c.endsWith("l") ? "20px" : "auto",
-            right: c.endsWith("r") ? "20px" : "auto",
-            width: "28px",
-            height: "28px",
-            borderTop: c.startsWith("t") ? "1px solid #1e3a2f" : "none",
-            borderBottom: c.startsWith("b") ? "1px solid #1e3a2f" : "none",
-            borderLeft: c.endsWith("l") ? "1px solid #1e3a2f" : "none",
-            borderRight: c.endsWith("r") ? "1px solid #1e3a2f" : "none",
-          }}
-        />
-      ))}
-
       {/* Settings button */}
       <button
         onClick={onShowSettings}
@@ -169,12 +133,9 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
         style={{
           width: "400px",
           maxWidth: "95vw",
-          background: "rgba(10,12,16,0.97)",
           border: "1px solid #1e3a2f",
           borderRadius: "4px",
           overflow: "hidden",
-          boxShadow:
-            "0 0 80px rgba(0,255,128,0.03), 0 40px 80px rgba(0,0,0,0.7)",
           position: "relative",
           zIndex: 1,
         }}
@@ -184,7 +145,6 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
           style={{
             padding: "36px 32px 24px",
             borderBottom: "1px solid #1a2e22",
-            background: "linear-gradient(180deg, #0d1f15 0%, transparent 100%)",
             textAlign: "center",
           }}
         >
@@ -208,7 +168,7 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
                 textTransform: "uppercase",
               }}
             >
-              COMBAT.IO
+              COMBAT
             </h1>
             <Crosshair size={18} color="#4ade80" />
           </div>
@@ -220,7 +180,7 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
               letterSpacing: "0.3em",
             }}
           >
-            TACTICAL MULTIPLAYER · v1.0
+            TACTICAL MULTIPLAYER
           </p>
         </div>
 
@@ -471,27 +431,6 @@ export function MenuScreen({ onShowSettings, onGameStart }: MenuScreenProps) {
         </div>
 
         {/* Status bar */}
-        <div
-          style={{
-            padding: "9px 32px",
-            borderTop: "1px solid #1a2e22",
-            background: "#080a0d",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <Wifi size={9} color="#166534" />
-          <span
-            style={{
-              color: "#2d5a3d",
-              fontSize: "9px",
-              letterSpacing: "0.12em",
-            }}
-          >
-            SERVER · localhost:3000
-          </span>
-        </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
