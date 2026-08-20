@@ -13,7 +13,7 @@ instead of sharing a single server.
 [![WebSockets](https://img.shields.io/badge/Realtime-WebSockets-black)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
 [![License](https://img.shields.io/badge/license-MIT-informational)](#license)
 
-[Live Demo](#) · [Report a Bug](#) · [Request a Feature](#)
+[Live Demo](https://shooter-wc2.pages.dev/) 
 
 </div>
 
