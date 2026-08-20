@@ -208,11 +208,6 @@ canvas/
 
 </details>
 
-## License
-
-This project is licensed under the MIT License — see the
-[LICENSE](./LICENSE) file for details.
-
 <div align="center">
 
 If you found this interesting, consider giving it a ⭐
